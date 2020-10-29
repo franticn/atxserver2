@@ -39,7 +39,7 @@ class APIDeviceListHandler(CorsMixin, BaseRequestHandler):
                                      ]  # include user-private device
             return r.expr(groups).contains(v['owner'].default(""))
 
-        reql = db.table_devices.without("sources", "source")
+        reql = db.table_devices
         if not self.current_user.admin:
             reql = reql.filter(filter_accessible)
 
@@ -57,6 +57,15 @@ class APIDeviceListHandler(CorsMixin, BaseRequestHandler):
 
         reql = reql.order_by(r.desc("createdAt"))
         devices = await reql.all()
+
+        for deviceItem in devices:
+            source = None
+            priority = 0
+            for s in deviceItem.get('sources', {}).values():
+                if s['priority'] > priority:
+                    source = s
+                    priority = s['priority']
+            deviceItem['source'] = source
 
         if self.get_argument("present", ""):
             present = self.get_argument("present") == "true"
